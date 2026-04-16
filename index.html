@@ -3,18 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GUI Amarine - Advanced Dashboard</title>
+    <title>GUI Amarine - Advanced Dashboard (Realtime)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Tambahkan Socket.IO Client -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
     <style>
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: #475569; }
-        
-        /* Terminal text style */
         .terminal-text {
             font-family: 'Courier New', Courier, monospace;
             font-size: 0.8rem;
@@ -25,15 +22,14 @@
 </head>
 <body class="bg-slate-950 h-screen w-screen p-6 flex items-center justify-center font-sans text-slate-300 overflow-hidden">
 
-    <!-- MAIN APPLICATION CONTAINER -->
     <div class="w-full h-full max-w-[1400px] bg-slate-900 border-2 border-slate-700 rounded-2xl shadow-2xl p-6 flex flex-col gap-6">
         
         <!-- TOP BAR: Connection & Arming -->
         <div class="flex gap-4 shrink-0">
-            <button id="btn-ssh" onclick="toggleSsh()" class="px-6 py-3 bg-slate-800 border-2 border-slate-600 rounded-xl font-bold text-slate-300 hover:bg-slate-700 hover:text-white transition-all flex items-center gap-2 shadow-lg w-48 justify-center">
+            <button id="btn-ssh" onclick="requestSshToggle()" class="px-6 py-3 bg-slate-800 border-2 border-slate-600 rounded-xl font-bold text-slate-300 hover:bg-slate-700 hover:text-white transition-all flex items-center gap-2 shadow-lg w-48 justify-center">
                 <i data-lucide="wifi-off" class="w-5 h-5"></i> <span id="ssh-text">Connect Jetson</span>
             </button>
-            <button id="btn-arm" onclick="toggleArm()" class="px-6 py-3 bg-slate-800 border-2 border-slate-600 rounded-xl font-bold text-slate-300 hover:bg-slate-700 hover:text-white transition-all flex items-center gap-2 shadow-lg w-48 justify-center">
+            <button id="btn-arm" onclick="requestArmToggle()" class="px-6 py-3 bg-slate-800 border-2 border-slate-600 rounded-xl font-bold text-slate-300 hover:bg-slate-700 hover:text-white transition-all flex items-center gap-2 shadow-lg w-48 justify-center">
                 <i data-lucide="shield" class="w-5 h-5"></i> <span id="arm-text">Arm/Disarm</span>
             </button>
         </div>
@@ -46,7 +42,7 @@
                 
                 <!-- ROV MODE PANEL -->
                 <div class="flex-1 bg-slate-800/40 border-2 border-slate-600 rounded-2xl relative flex items-center justify-center group hover:border-blue-500 transition-colors shadow-inner min-h-[120px]">
-                    <button id="btn-rov" onclick="toggleProcess('rov')" class="absolute top-4 right-4 px-4 py-2 bg-slate-700 border border-slate-500 rounded-lg text-xs font-bold tracking-wider hover:bg-slate-600 transition-colors uppercase z-10">
+                    <button id="btn-rov" onclick="requestProcessToggle('rov')" class="absolute top-4 right-4 px-4 py-2 bg-slate-700 border border-slate-500 rounded-lg text-xs font-bold tracking-wider hover:bg-slate-600 transition-colors uppercase z-10">
                         START / STOP
                     </button>
                     <h2 class="text-3xl font-bold tracking-widest text-slate-300 group-hover:text-white transition-colors">ROV MODE</h2>
@@ -54,7 +50,7 @@
 
                 <!-- AUV MODE PANEL -->
                 <div class="flex-1 bg-slate-800/40 border-2 border-slate-600 rounded-2xl relative flex flex-col items-center justify-center group hover:border-purple-500 transition-colors shadow-inner min-h-[120px]">
-                    <button id="btn-auv" onclick="toggleProcess('auv')" class="absolute top-4 right-4 px-4 py-2 bg-slate-700 border border-slate-500 rounded-lg text-xs font-bold tracking-wider hover:bg-slate-600 transition-colors uppercase z-10">
+                    <button id="btn-auv" onclick="requestProcessToggle('auv')" class="absolute top-4 right-4 px-4 py-2 bg-slate-700 border border-slate-500 rounded-lg text-xs font-bold tracking-wider hover:bg-slate-600 transition-colors uppercase z-10">
                         START / STOP
                     </button>
                     <h2 class="text-3xl font-bold tracking-widest text-slate-300 group-hover:text-white transition-colors">AUV</h2>
@@ -64,7 +60,7 @@
                 <!-- MONITORING PANEL -->
                 <div class="flex-1 bg-slate-800/40 border-2 border-slate-600 rounded-2xl p-6 flex flex-col justify-center shadow-inner min-h-[180px]">
                     <div class="font-bold text-lg text-slate-200 mb-4 border-b border-slate-600 pb-2 flex items-center gap-2">
-                        <i data-lucide="activity" class="w-5 h-5 text-emerald-400"></i> Monitoring :
+                        <i data-lucide="activity" class="w-5 h-5 text-emerald-400"></i> Monitoring (Live Data) :
                     </div>
                     
                     <div class="flex flex-col gap-3 px-4 font-mono text-sm text-slate-300">
@@ -102,48 +98,33 @@
             <div class="w-full md:w-2/5 h-full bg-[#0a0a0a] border-2 border-slate-700 rounded-2xl flex flex-col relative overflow-hidden shadow-2xl">
                 
                 <div class="absolute top-0 left-0 w-full h-10 bg-slate-800/80 backdrop-blur-sm border-b border-slate-700 flex items-center justify-between px-4 z-10">
-                    <span class="font-mono text-xs font-bold tracking-widest text-slate-400">Console Preview</span>
+                    <span class="font-mono text-xs font-bold tracking-widest text-slate-400">Console Preview (Real SSH Log)</span>
                     <button onclick="clearConsole()" class="text-[10px] uppercase font-bold bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded transition-colors">Clear</button>
                 </div>
 
                 <div id="main-console" class="terminal-text p-6 pt-14 flex-1 overflow-y-auto text-slate-300">
-                    <div class="text-slate-500 italic">Welcome to Amarine GCS. Waiting for connection...</div>
+                    <div class="text-slate-500 italic">Welcome to Amarine GCS. Waiting for backend connection...</div>
                 </div>
             </div>
 
         </div>
     </div>
 
-    <!-- JAVASCRIPT LOGIC -->
     <script>
         lucide.createIcons();
 
-        // 1. Inisialisasi koneksi Web Socket ke app.py Backend
+        // --- 1. WEB SOCKET CONNECTION TO BACKEND ---
         const socket = io();
 
-        // State Variables
+        // State Variables (Now strictly synced with Backend)
         let sshConnected = false;
         let isArmed = false;
         const processes = {
-            rov: { running: false, interval: null },
-            auv: { running: false, interval: null, timer: 0 }
+            rov: { running: false },
+            auv: { running: false }
         };
 
-        // Kodingan AUV Skenario (Sesuai dengan boat_mover_node.cpp milik Ozza)
-        const auvScenario = [
-            { t: 0.0, msg: "SIAP! Skenario 10 Detik. Yaw & Lateral sudah dibalik (Inverted)." },
-            { t: 0.5, msg: "Time 0.0: STANDBY..." },
-            { t: 3.0, msg: "Time 3.0: MAJU..." },
-            { t: 13.0, msg: "Time 13.0: YAW KANAN (Putar)..." },
-            { t: 23.0, msg: "Time 23.0: YAW KIRI (Putar)..." },
-            { t: 33.0, msg: "Time 33.0: MUNCUL (Naik)..." },
-            { t: 43.0, msg: "Time 43.0: MENYELAM (Turun)..." },
-            { t: 53.0, msg: "Time 53.0: LATERAL KANAN (Geser)..." },
-            { t: 63.0, msg: "Time 63.0: LATERAL KIRI (Geser)..." },
-            { t: 73.0, msg: "Time 73.0: MUNDUR..." },
-            { t: 83.0, msg: "Time 83.0: SELESAI. Stop." },
-        ];
-
+        // --- UTILS ---
         function getTimestamp() {
             const now = new Date();
             return `[${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}]`;
@@ -161,82 +142,115 @@
             
             div.innerText = `${getTimestamp()} ${text}`;
             con.appendChild(div);
-            con.scrollTop = con.scrollHeight; // Auto-scroll
+            con.scrollTop = con.scrollHeight;
         }
 
         function clearConsole() {
             document.getElementById('main-console').innerHTML = '';
         }
 
-        // Menerima Data dari Backend
+        // --- SOCKET EVENT LISTENERS (RECEIVING FROM BACKEND) ---
+
+        // Socket connection status
+        socket.on('connect', () => {
+            appendToConsole("[SYSTEM] Connected to Web Server Backend.", "success");
+        });
+
+        socket.on('disconnect', () => {
+            appendToConsole("[SYSTEM] Lost connection to Web Server Backend!", "error");
+            updateSshUI(false); // Force disconnect if backend dies
+        });
+
+        // Receiving pure terminal logs
         socket.on('terminal_output', function(data) {
             appendToConsole(data.text, data.is_error ? 'error' : 'normal');
         });
 
-        // --- BUTTON HANDLERS ---
-
-        function toggleSsh() {
-            const btn = document.getElementById('btn-ssh');
-            const text = document.getElementById('ssh-text');
-            const icon = btn.querySelector('i');
-
-            if (sshConnected) {
-                sshConnected = false;
-                if(isArmed) toggleArm();
-                if(processes.rov.running) toggleProcess('rov');
-                if(processes.auv.running) toggleProcess('auv');
-
-                btn.className = "px-6 py-3 bg-slate-800 border-2 border-slate-600 rounded-xl font-bold text-slate-300 hover:bg-slate-700 hover:text-white transition-all flex items-center gap-2 shadow-lg w-48 justify-center";
-                text.innerText = "Connect Jetson";
-                icon.setAttribute("data-lucide", "wifi-off");
-                appendToConsole("SSH Connection Closed.", "error");
+        // Updating Connection UI based on real status
+        socket.on('ssh_status', function(data) {
+            sshConnected = data.connected;
+            updateSshUI(sshConnected);
+            if(sshConnected) {
+                appendToConsole("SSH Connection Established successfully with Jetson!", "success");
             } else {
-                appendToConsole("Attempting SSH connection to amarine@ubuntu.local...", "normal");
-                btn.className = "px-6 py-3 bg-slate-800 border-2 border-slate-600 rounded-xl font-bold text-slate-300 flex items-center gap-2 shadow-lg w-48 justify-center opacity-70 cursor-wait";
-                text.innerText = "Connecting...";
-                
-                // Simulate Connection Delay
-                setTimeout(() => {
-                    sshConnected = true;
-                    btn.className = "px-6 py-3 bg-green-900/40 border-2 border-green-600/50 rounded-xl font-bold text-green-400 hover:bg-red-900/40 hover:text-red-400 hover:border-red-600/50 transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(34,197,94,0.2)] w-48 justify-center";
-                    text.innerText = "Connected";
-                    icon.setAttribute("data-lucide", "wifi");
-                    lucide.createIcons();
-                    appendToConsole("SSH Connection Established successfully!", "success");
-                }, 1500);
+                appendToConsole("SSH Disconnected from Jetson.", "error");
+                updateArmUI(false);
+                updateProcessUI('rov', false);
+                updateProcessUI('auv', false);
             }
-            lucide.createIcons();
+        });
+
+        // Updating Arming UI based on real status
+        socket.on('arm_status', function(data) {
+            isArmed = data.armed;
+            updateArmUI(isArmed);
+            if(isArmed) appendToConsole('ARMED! Thrusters are LIVE.', 'success');
+            else appendToConsole('DISARMED. Thrusters disabled.', 'error');
+        });
+
+        // Updating Process UI (ROV/AUV) based on real status
+        socket.on('process_status', function(data) {
+            const id = data.id;
+            processes[id].running = data.running;
+            updateProcessUI(id, data.running);
+            if(!data.running) {
+                appendToConsole(`${id.toUpperCase()} Process Terminated.`, 'normal');
+            }
+        });
+
+        // Updating Real Hardware Stats from Jetson (tegrastats / htop)
+        socket.on('hardware_stats', function(data) {
+            if(!sshConnected) return; // Prevent updates if disconnected
+
+            document.getElementById('val-cpu').innerText = `${data.cpu}%`;
+            document.getElementById('bar-cpu').style.width = `${data.cpu}%`;
+            
+            document.getElementById('val-gpu').innerText = `${data.gpu}%`;
+            document.getElementById('bar-gpu').style.width = `${data.gpu}%`;
+
+            document.getElementById('val-mem').innerText = `${data.mem} GB`;
+            document.getElementById('bar-mem').style.width = `${(data.mem/8)*100}%`;
+
+            document.getElementById('val-temp').innerText = `${data.temp}°C`;
+            document.getElementById('bar-temp').style.width = `${Math.min(data.temp, 100)}%`;
+            document.getElementById('bar-temp').className = data.temp > 55 ? "bg-red-500 h-full w-0 transition-all duration-500" : "bg-orange-500 h-full w-0 transition-all duration-500";
+
+            document.getElementById('val-watt').innerText = `${data.watt} W`;
+            document.getElementById('bar-watt').style.width = `${Math.min((data.watt/30)*100, 100)}%`;
+        });
+
+
+        // --- REQUEST FUNCTIONS (SENDING TO BACKEND) ---
+        // UI tidak akan berubah saat dipencet. UI HANYA berubah saat backend membalas.
+
+        function requestSshToggle() {
+            const btn = document.getElementById('btn-ssh');
+            btn.className = "px-6 py-3 bg-slate-800 border-2 border-slate-600 rounded-xl font-bold text-slate-300 flex items-center gap-2 shadow-lg w-48 justify-center opacity-70 cursor-wait";
+            
+            if (sshConnected) {
+                appendToConsole("Requesting SSH Disconnect...", "normal");
+                socket.emit('request_ssh_disconnect');
+            } else {
+                appendToConsole("Requesting SSH Connection to amarine@ubuntu.local...", "normal");
+                socket.emit('request_ssh_connect');
+            }
         }
 
-        function toggleArm() {
+        function requestArmToggle() {
             if (!sshConnected) {
                 appendToConsole("Cannot Arm: Jetson is not connected!", "error");
                 return;
             }
-
-            const btn = document.getElementById('btn-arm');
-            const text = document.getElementById('arm-text');
-            const icon = btn.querySelector('i');
-
             if (isArmed) {
-                isArmed = false;
-                btn.className = "px-6 py-3 bg-slate-800 border-2 border-slate-600 rounded-xl font-bold text-slate-300 hover:bg-slate-700 hover:text-white transition-all flex items-center gap-2 shadow-lg w-48 justify-center";
-                text.innerText = "Arm/Disarm";
-                icon.setAttribute("data-lucide", "shield");
-                appendToConsole('Executing: ros2 service call /mavros/cmd/arming "{value: False}"', 'cmd');
-                setTimeout(() => appendToConsole('DISARMED. Thrusters disabled.', 'error'), 500);
+                appendToConsole('Requesting MAVROS Disarm...', 'cmd');
+                socket.emit('request_disarm');
             } else {
-                isArmed = true;
-                btn.className = "px-6 py-3 bg-red-600/20 border-2 border-red-600 rounded-xl font-bold text-red-500 hover:bg-slate-800 hover:border-slate-600 hover:text-slate-300 transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(220,38,38,0.3)] animate-pulse w-48 justify-center";
-                text.innerText = "DISARM (KILL)";
-                icon.setAttribute("data-lucide", "shield-alert");
-                appendToConsole('Executing: ros2 service call /mavros/cmd/arming "{value: True}"', 'cmd');
-                setTimeout(() => appendToConsole('ARMED! Thrusters are LIVE.', 'success'), 500);
+                appendToConsole('Requesting MAVROS Arm...', 'cmd');
+                socket.emit('request_arm');
             }
-            lucide.createIcons();
         }
 
-        function toggleProcess(id) {
+        function requestProcessToggle(id) {
             if (!sshConnected) {
                 appendToConsole(`Cannot start ${id.toUpperCase()}: Jetson is not connected!`, "error");
                 return;
@@ -246,98 +260,71 @@
                 return;
             }
 
-            const btn = document.getElementById(`btn-${id}`);
-            const proc = processes[id];
-
-            // Cegah nyalakan ROV dan AUV bersamaan
             const otherId = id === 'rov' ? 'auv' : 'rov';
-            if (!proc.running && processes[otherId].running) {
+            if (!processes[id].running && processes[otherId].running) {
                 appendToConsole(`Please stop ${otherId.toUpperCase()} mode before starting ${id.toUpperCase()}.`, "error");
                 return;
             }
 
-            if (proc.running) {
-                // STOP PROCESS
-                proc.running = false;
-                clearInterval(proc.interval);
-                btn.className = "absolute top-4 right-4 px-4 py-2 bg-slate-700 border border-slate-500 rounded-lg text-xs font-bold tracking-wider hover:bg-slate-600 transition-colors uppercase z-10 text-slate-300";
-                
-                if(id === 'auv') appendToConsole('Mission Aborted (Ctrl+C sent).', 'error');
-                else appendToConsole(`${id.toUpperCase()} Mode Deactivated.`, 'normal');
-                
-                // Kirim request ke backend via socket
-                socket.emit('kill_process', { id: id });
-
+            if (processes[id].running) {
+                appendToConsole(`Requesting to kill ${id.toUpperCase()} node...`, 'cmd');
+                socket.emit('request_kill_process', { id: id });
             } else {
-                // START PROCESS
-                proc.running = true;
-                proc.timer = 0;
-                btn.className = "absolute top-4 right-4 px-4 py-2 bg-red-600 border border-red-500 rounded-lg text-xs font-bold tracking-wider hover:bg-red-700 transition-colors uppercase z-10 text-white shadow-[0_0_10px_rgba(220,38,38,0.5)]";
-                
-                appendToConsole(`Starting ${id.toUpperCase()}...`, 'cmd');
-
-                // Simulasi Script boat_mover_node yang baru
-                if (id === 'auv') {
-                    appendToConsole('ros2 run simple_boat boat_mover_node', 'cmd');
-                    
-                    let scenarioIndex = 0;
-                    proc.interval = setInterval(() => {
-                        proc.timer += 0.5; // simulasi tick waktu
-                        
-                        // Cek apakah ada pesan sesuai waktu di scenario
-                        if (scenarioIndex < auvScenario.length && proc.timer >= auvScenario[scenarioIndex].t) {
-                            appendToConsole(`[boat_mover_node] ${auvScenario[scenarioIndex].msg}`, 'auv');
-                            scenarioIndex++;
-                        }
-
-                        // Auto stop kalau skenario habis
-                        if (proc.timer > 85.0) {
-                            toggleProcess('auv');
-                        }
-                    }, 500);
-                } else if (id === 'rov') {
-                    appendToConsole('ROV Teleoperation node started. Awaiting joystick input...', 'normal');
-                }
-
-                // Kirim request ke backend via socket
-                socket.emit('start_process', { id: id, target: 'default' });
+                appendToConsole(`Requesting to start ${id.toUpperCase()} node...`, 'cmd');
+                socket.emit('request_start_process', { id: id });
             }
         }
 
-        // Hardware Monitoring Live Simulation (Meniru Jetson)
-        setInterval(() => {
-            if(sshConnected && Math.random() > 0.3) {
-                const cpu = Math.floor(Math.random() * 30) + 15; // 15-45%
-                const gpu = Math.floor(Math.random() * 50) + (processes.auv.running ? 40 : 10); // GPU naik kalau AUV jalan
-                const mem = (Math.random() * 0.5 + 4.2).toFixed(1); // ~4GB
-                const temp = Math.floor(Math.random() * 10) + (processes.auv.running ? 50 : 40); // 40-60C
-                const watt = (Math.random() * 5 + (isArmed ? 15 : 5)).toFixed(1); // Naik kalau Armed
+        // --- UI UPDATE FUNCTIONS ---
+        
+        function updateSshUI(connected) {
+            const btn = document.getElementById('btn-ssh');
+            const text = document.getElementById('ssh-text');
+            const icon = btn.querySelector('i');
 
-                document.getElementById('val-cpu').innerText = `${cpu}%`;
-                document.getElementById('bar-cpu').style.width = `${cpu}%`;
+            if(connected) {
+                btn.className = "px-6 py-3 bg-green-900/40 border-2 border-green-600/50 rounded-xl font-bold text-green-400 hover:bg-red-900/40 hover:text-red-400 hover:border-red-600/50 transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(34,197,94,0.2)] w-48 justify-center";
+                text.innerText = "Connected";
+                icon.setAttribute("data-lucide", "wifi");
+            } else {
+                btn.className = "px-6 py-3 bg-slate-800 border-2 border-slate-600 rounded-xl font-bold text-slate-300 hover:bg-slate-700 hover:text-white transition-all flex items-center gap-2 shadow-lg w-48 justify-center";
+                text.innerText = "Connect Jetson";
+                icon.setAttribute("data-lucide", "wifi-off");
                 
-                document.getElementById('val-gpu').innerText = `${gpu}%`;
-                document.getElementById('bar-gpu').style.width = `${gpu}%`;
-
-                document.getElementById('val-mem').innerText = `${mem} GB`;
-                document.getElementById('bar-mem').style.width = `${(mem/8)*100}%`;
-
-                document.getElementById('val-temp').innerText = `${temp}°C`;
-                document.getElementById('bar-temp').style.width = `${Math.min(temp, 100)}%`;
-                
-                // Ubah warna temp kalau panas
-                document.getElementById('bar-temp').className = temp > 55 ? "bg-red-500 h-full w-0 transition-all duration-500" : "bg-orange-500 h-full w-0 transition-all duration-500";
-
-                document.getElementById('val-watt').innerText = `${watt} W`;
-                document.getElementById('bar-watt').style.width = `${Math.min((watt/30)*100, 100)}%`;
-            } else if (!sshConnected) {
-                // Reset kalau disconnect
+                // Reset monitoring
                 ['cpu', 'gpu', 'mem', 'temp', 'watt'].forEach(id => {
                     document.getElementById(`val-${id}`).innerText = id === 'mem' ? '0 GB' : id === 'temp' ? '0°C' : id === 'watt' ? '0 W' : '0%';
                     document.getElementById(`bar-${id}`).style.width = '0%';
                 });
             }
-        }, 1500);
+            lucide.createIcons();
+        }
+
+        function updateArmUI(armed) {
+            const btn = document.getElementById('btn-arm');
+            const text = document.getElementById('arm-text');
+            const icon = btn.querySelector('i');
+
+            if(armed) {
+                btn.className = "px-6 py-3 bg-red-600/20 border-2 border-red-600 rounded-xl font-bold text-red-500 hover:bg-slate-800 hover:border-slate-600 hover:text-slate-300 transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(220,38,38,0.3)] animate-pulse w-48 justify-center";
+                text.innerText = "DISARM (KILL)";
+                icon.setAttribute("data-lucide", "shield-alert");
+            } else {
+                btn.className = "px-6 py-3 bg-slate-800 border-2 border-slate-600 rounded-xl font-bold text-slate-300 hover:bg-slate-700 hover:text-white transition-all flex items-center gap-2 shadow-lg w-48 justify-center";
+                text.innerText = "Arm/Disarm";
+                icon.setAttribute("data-lucide", "shield");
+            }
+            lucide.createIcons();
+        }
+
+        function updateProcessUI(id, running) {
+            const btn = document.getElementById(`btn-${id}`);
+            if(running) {
+                btn.className = "absolute top-4 right-4 px-4 py-2 bg-red-600 border border-red-500 rounded-lg text-xs font-bold tracking-wider hover:bg-red-700 transition-colors uppercase z-10 text-white shadow-[0_0_10px_rgba(220,38,38,0.5)]";
+            } else {
+                btn.className = "absolute top-4 right-4 px-4 py-2 bg-slate-700 border border-slate-500 rounded-lg text-xs font-bold tracking-wider hover:bg-slate-600 transition-colors uppercase z-10 text-slate-300";
+            }
+        }
 
     </script>
 </body>
