@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amarine GCS - Web Control</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Custom Scrollbar for Terminal */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0a0a0a; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569; 
+        }
+    </style>
+</head>
+<body class="bg-slate-950 font-sans text-slate-300 antialiased overflow-hidden h-screen">
+
+    <!-- ==================== LOGIN VIEW ==================== -->
+    <div id="login-view" class="h-full bg-slate-900 flex items-center justify-center p-4">
+        <div class="bg-slate-800 p-8 rounded-xl shadow-2xl border border-slate-700 w-full max-w-md">
+            <div class="flex justify-center mb-6">
+                <div class="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(37,99,235,0.5)]">
+                    <i data-lucide="shield-check" class="text-white w-10 h-10"></i>
+                </div>
+            </div>
+            <h1 class="text-2xl font-bold text-center text-white mb-2">AMARINE GCS</h1>
+            <p class="text-center text-slate-400 mb-8 text-sm">Ground Control Station - Secure Login</p>
+            
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <div class="relative">
+                        <i data-lucide="user" class="absolute left-3 top-3 text-slate-400 w-5 h-5"></i>
+                        <input id="username" type="text" class="w-full bg-slate-900 border border-slate-700 text-white rounded-lg py-3 pl-10 px-4 focus:outline-none focus:border-blue-500 transition-colors" placeholder="Username">
+                    </div>
+                </div>
+                <div>
+                    <div class="relative">
+                        <i data-lucide="lock" class="absolute left-3 top-3 text-slate-400 w-5 h-5"></i>
+                        <input id="password" type="password" class="w-full bg-slate-900 border border-slate-700 text-white rounded-lg py-3 pl-10 px-4 focus:outline-none focus:border-blue-500 transition-colors" placeholder="Password">
+                    </div>
+                </div>
+                <p id="login-error" class="hidden text-red-400 text-sm text-center">Invalid credentials!</p>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors shadow-lg mt-4">
+                    ACCESS TERMINAL
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==================== DASHBOARD VIEW ==================== -->
+    <div id="dashboard-view" class="hidden h-full flex flex-col">
+        <!-- HEADER -->
+        <header class="bg-slate-900 border-b border-slate-800 p-4 flex justify-between items-center shadow-md z-10">
+            <div class="flex items-center gap-3">
+                <i data-lucide="navigation" class="text-blue-500 w-6 h-6"></i>
+                <h1 class="text-xl font-bold text-white tracking-wider">AMARINE <span class="text-blue-500 font-mono text-sm ml-2">v2.0</span></h1>
+            </div>
+            
+            <div class="flex items-center gap-4">
+                <!-- SSH Status Button -->
+                <button id="btn-ssh" onclick="toggleSsh()" class="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all bg-slate-800 text-slate-400 border border-slate-700 hover:bg-blue-900/40 hover:text-blue-400">
+                    <span id="ssh-content" class="flex items-center gap-2">
+                        <i data-lucide="wifi-off" class="w-4 h-4"></i> Connect Jetson
+                    </span>
+                </button>
+
+                <!-- ARM/DISARM Button -->
+                <button id="btn-arm" onclick="toggleArm()" class="flex items-center gap-2 px-6 py-2 rounded-lg font-bold text-sm transition-all shadow-lg bg-slate-700 hover:bg-yellow-600 text-white">
+                    <span id="arm-content" class="flex items-center gap-2">
+                        <i data-lucide="shield-check" class="w-4 h-4"></i> ARM VEHICLE
+                    </span>
+                </button>
+                
+                <button onclick="logout()" class="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors">
+                    <i data-lucide="power" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- MAIN WORKSPACE -->
+        <main class="flex-1 p-6 flex flex-col md:flex-row gap-6 overflow-hidden">
+            
+            <!-- LEFT/CENTER PANEL: Control Interface -->
+            <div class="flex-1 flex flex-col gap-6 h-full">
+                
+                <!-- Mode Selector -->
+                <div class="bg-slate-900 rounded-xl border border-slate-800 p-2 flex gap-2 shrink-0">
+                    <button onclick="setMode('selection')" id="tab-selection" class="flex-1 py-3 font-bold rounded-lg transition-colors bg-slate-800 text-white">OVERVIEW</button>
+                    <button onclick="setMode('rov')" id="tab-rov" class="flex-1 py-3 font-bold rounded-lg transition-colors text-slate-500 hover:bg-slate-800/50">ROV MODE (MANUAL)</button>
+                    <button onclick="setMode('auv')" id="tab-auv" class="flex-1 py-3 font-bold rounded-lg transition-colors text-slate-500 hover:bg-slate-800/50">AUV MODE (AUTO)</button>
+                </div>
+
+                <!-- DYNAMIC CONTENT BASED ON MODE -->
+                <div class="flex-1 bg-slate-900 rounded-xl border border-slate-800 p-6 flex items-center justify-center relative overflow-hidden">
+                    <!-- BG Grid Pattern -->
+                    <div class="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:30px_30px] pointer-events-none"></div>
+
+                    <!-- MODE: SELECTION -->
+                    <div id="mode-selection" class="text-center z-10">
+                        <i data-lucide="cpu" class="mx-auto text-slate-700 mb-4 w-16 h-16"></i>
+                        <h2 class="text-2xl font-bold text-white mb-2">Select Operation Mode</h2>
+                        <p class="text-slate-400">Choose ROV for manual pilot or AUV for autonomous SAUVC mission.</p>
+                    </div>
+
+                    <!-- MODE: ROV -->
+                    <div id="mode-rov" class="hidden z-10 w-full max-w-2xl">
+                        <h2 class="text-xl font-bold text-white mb-8 text-center text-blue-400">ROV TELEOPERATION</h2>
+                        <div class="grid grid-cols-2 gap-12">
+                            <!-- Left Joy -->
+                            <div class="flex flex-col items-center gap-2">
+                                <button onclick="handleManualControl('FORWARD')" class="w-20 h-20 bg-slate-800 hover:bg-blue-600 active:bg-blue-700 rounded-lg shadow-lg border border-slate-700 flex items-center justify-center transition-colors font-bold">MAJU</button>
+                                <div class="flex gap-2">
+                                    <button onclick="handleManualControl('YAW_LEFT')" class="w-20 h-20 bg-slate-800 hover:bg-blue-600 active:bg-blue-700 rounded-lg shadow-lg border border-slate-700 flex items-center justify-center text-center leading-tight transition-colors font-bold">YAW<br>KIRI</button>
+                                    <button onclick="handleManualControl('BACKWARD')" class="w-20 h-20 bg-slate-800 hover:bg-blue-600 active:bg-blue-700 rounded-lg shadow-lg border border-slate-700 flex items-center justify-center transition-colors font-bold text-xs">MUNDUR</button>
+                                    <button onclick="handleManualControl('YAW_RIGHT')" class="w-20 h-20 bg-slate-800 hover:bg-blue-600 active:bg-blue-700 rounded-lg shadow-lg border border-slate-700 flex items-center justify-center text-center leading-tight transition-colors font-bold">YAW<br>KANAN</button>
+                                </div>
+                            </div>
+                            <!-- Right Joy -->
+                            <div class="flex flex-col items-center gap-2">
+                                <button onclick="handleManualControl('SURFACE')" class="w-20 h-20 bg-slate-800 hover:bg-emerald-600 active:bg-emerald-700 rounded-lg shadow-lg border border-slate-700 flex items-center justify-center transition-colors font-bold">NAIK</button>
+                                <div class="flex gap-2">
+                                    <button onclick="handleManualControl('LATERAL_LEFT')" class="w-20 h-20 bg-slate-800 hover:bg-emerald-600 active:bg-emerald-700 rounded-lg shadow-lg border border-slate-700 flex items-center justify-center text-center leading-tight transition-colors font-bold text-xs">GESER<br>KIRI</button>
+                                    <button onclick="handleManualControl('DIVE')" class="w-20 h-20 bg-slate-800 hover:bg-emerald-600 active:bg-emerald-700 rounded-lg shadow-lg border border-slate-700 flex items-center justify-center transition-colors font-bold text-xs">TURUN</button>
+                                    <button onclick="handleManualControl('LATERAL_RIGHT')" class="w-20 h-20 bg-slate-800 hover:bg-emerald-600 active:bg-emerald-700 rounded-lg shadow-lg border border-slate-700 flex items-center justify-center text-center leading-tight transition-colors font-bold text-xs">GESER<br>KANAN</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- MODE: AUV -->
+                    <div id="mode-auv" class="hidden z-10 text-center">
+                        <div class="w-24 h-24 bg-purple-900/30 rounded-full flex items-center justify-center mx-auto border border-purple-500/50 mb-6 shadow-[0_0_30px_rgba(168,85,247,0.2)]">
+                            <i data-lucide="cpu" class="text-purple-400 w-10 h-10"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold text-white mb-2">AUTONOMOUS MISSION</h2>
+                        <p class="text-slate-400 mb-8 max-w-md mx-auto">This will execute MAVROS, the stepper mechanism, and the main boat_mover_node automatically.</p>
+                        
+                        <button id="btn-mission" onclick="toggleMission()" class="flex items-center gap-3 mx-auto px-8 py-4 rounded-xl font-bold text-lg transition-all shadow-xl bg-purple-600 hover:bg-purple-500 text-white shadow-[0_0_20px_rgba(147,51,234,0.4)]">
+                            <span id="mission-content" class="flex items-center gap-3">
+                                <i data-lucide="play" class="fill-current w-6 h-6"></i> LAUNCH SAUVC MISSION
+                            </span>
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- RIGHT PANEL: Terminal Logs -->
+            <div class="w-full md:w-[400px] h-full flex flex-col bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shrink-0 shadow-lg">
+                <div class="bg-slate-950 px-4 py-3 border-b border-slate-800 flex items-center gap-2">
+                    <i data-lucide="terminal" class="text-slate-400 w-4 h-4"></i>
+                    <span class="text-xs font-mono text-slate-400 font-bold tracking-widest uppercase">SSH Terminal Output</span>
+                </div>
+                <div id="terminal-logs" class="flex-1 p-4 font-mono text-xs overflow-y-auto space-y-1 bg-[#0a0a0a]">
+                    <!-- Logs will be injected here -->
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        // State Variables
+        let sshConnected = false;
+        let isConnecting = false;
+        let isArmed = false;
+        let missionRunning = false;
+
+        // Elements
+        const loginView = document.getElementById('login-view');
+        const dashboardView = document.getElementById('dashboard-view');
+        const loginForm = document.getElementById('login-form');
+        const loginError = document.getElementById('login-error');
+        const terminalLogs = document.getElementById('terminal-logs');
+        
+        // Mode views
+        const views = {
+            selection: document.getElementById('mode-selection'),
+            rov: document.getElementById('mode-rov'),
+            auv: document.getElementById('mode-auv')
+        };
+        // Mode tabs
+        const tabs = {
+            selection: document.getElementById('tab-selection'),
+            rov: document.getElementById('tab-rov'),
+            auv: document.getElementById('tab-auv')
+        };
+
+        // --- Core Functions ---
+
+        function addLog(message, type = 'info') {
+            const time = new Date().toLocaleTimeString();
+            let colorClass = 'text-slate-300';
+            let prefix = '';
+
+            if (type === 'error') colorClass = 'text-red-400';
+            else if (type === 'success') colorClass = 'text-emerald-400';
+            else if (type === 'cmd') {
+                colorClass = 'text-blue-300 font-bold';
+                prefix = '> ';
+            }
+
+            const logEntry = document.createElement('div');
+            logEntry.className = 'flex gap-3 leading-relaxed';
+            logEntry.innerHTML = `
+                <span class="text-slate-600 shrink-0">[${time}]</span>
+                <span class="break-words ${colorClass}">${prefix}${message}</span>
+            `;
+            
+            terminalLogs.appendChild(logEntry);
+            terminalLogs.scrollTop = terminalLogs.scrollHeight; // Auto-scroll
+        }
+
+        function refreshIcons() {
+            lucide.createIcons();
+        }
+
+        // --- Event Handlers ---
+
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+
+            if (user === 'amarine' && pass === '123890') {
+                loginView.classList.add('hidden');
+                dashboardView.classList.remove('hidden');
+                addLog('Authentication successful. Welcome, Captain Ozza.', 'success');
+                refreshIcons();
+            } else {
+                loginError.classList.remove('hidden');
+            }
+        });
+
+        function logout() {
+            dashboardView.classList.add('hidden');
+            loginView.classList.remove('hidden');
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+            loginError.classList.add('hidden');
+        }
+
+        function toggleSsh() {
+            if (isConnecting) return;
+
+            const btn = document.getElementById('btn-ssh');
+            const content = document.getElementById('ssh-content');
+
+            if (sshConnected) {
+                // Disconnect
+                sshConnected = false;
+                if(isArmed) toggleArm(); // Disarm if connected
+                if(missionRunning) toggleMission(); // Stop mission
+                
+                btn.className = "flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all bg-slate-800 text-slate-400 border border-slate-700 hover:bg-blue-900/40 hover:text-blue-400";
+                content.innerHTML = `<i data-lucide="wifi-off" class="w-4 h-4"></i> Connect Jetson`;
+                addLog('SSH connection terminated.', 'error');
+                refreshIcons();
+            } else {
+                // Connect
+                isConnecting = true;
+                addLog('Attempting SSH connection to amarine@ubuntu.local...', 'info');
+                
+                btn.className = "flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all bg-slate-800 text-slate-400 border border-slate-700";
+                content.innerHTML = `<i data-lucide="wifi" class="w-4 h-4 animate-pulse"></i> Connecting...`;
+                refreshIcons();
+
+                setTimeout(() => {
+                    isConnecting = false;
+                    sshConnected = true;
+                    btn.className = "flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all bg-green-900/30 text-green-400 border border-green-700/50 hover:bg-red-900/40 hover:text-red-400 hover:border-red-700/50";
+                    content.innerHTML = `<i data-lucide="wifi" class="w-4 h-4"></i> SSH Connected`;
+                    addLog('SSH Connection Established!', 'success');
+                    addLog('Jetson Nano ready to receive commands.', 'info');
+                    refreshIcons();
+                }, 2000);
+            }
+        }
+
+        function toggleArm() {
+            if (!sshConnected) {
+                addLog('Cannot Arm: SSH not connected!', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('btn-arm');
+            const content = document.getElementById('arm-content');
+
+            if (isArmed) {
+                isArmed = false;
+                btn.className = "flex items-center gap-2 px-6 py-2 rounded-lg font-bold text-sm transition-all shadow-lg bg-slate-700 hover:bg-yellow-600 text-white";
+                content.innerHTML = `<i data-lucide="shield-check" class="w-4 h-4"></i> ARM VEHICLE`;
+                addLog('Executing: ros2 service call /mavros/cmd/arming "{value: False}"', 'cmd');
+                setTimeout(() => addLog('DISARMED. Thrusters disabled.', 'error'), 500);
+            } else {
+                isArmed = true;
+                btn.className = "flex items-center gap-2 px-6 py-2 rounded-lg font-bold text-sm transition-all shadow-lg bg-red-600 hover:bg-red-700 text-white animate-pulse";
+                content.innerHTML = `<i data-lucide="shield-alert" class="w-4 h-4"></i> DISARM (KILL)`;
+                addLog('Executing: ros2 service call /mavros/cmd/arming "{value: True}"', 'cmd');
+                setTimeout(() => addLog('ARMED! Thrusters are LIVE.', 'success'), 500);
+            }
+            refreshIcons();
+        }
+
+        function setMode(newMode) {
+            // Hide all views
+            Object.values(views).forEach(v => v.classList.add('hidden'));
+            // Reset tabs
+            Object.values(tabs).forEach(t => t.className = "flex-1 py-3 font-bold rounded-lg transition-colors text-slate-500 hover:bg-slate-800/50");
+
+            // Show selected view
+            views[newMode].classList.remove('hidden');
+
+            // Highlight selected tab
+            if (newMode === 'selection') tabs[newMode].classList.add('bg-slate-800', 'text-white');
+            if (newMode === 'rov') tabs[newMode].classList.add('bg-blue-600', 'text-white');
+            if (newMode === 'auv') tabs[newMode].classList.add('bg-purple-600', 'text-white');
+            
+            tabs[newMode].classList.remove('text-slate-500', 'hover:bg-slate-800/50');
+        }
+
+        function handleManualControl(action) {
+            if (!isArmed) {
+                addLog(`Cannot move ${action}: Drone is DISARMED!`, 'error');
+                return;
+            }
+            addLog(`ROV CMD: Setting thruster override for ${action}...`, 'cmd');
+        }
+
+        function toggleMission() {
+            if (!isArmed && !missionRunning) {
+                addLog('Cannot start mission: Please ARM the drone first!', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('btn-mission');
+            const content = document.getElementById('mission-content');
+
+            if (missionRunning) {
+                missionRunning = false;
+                btn.className = "flex items-center gap-3 mx-auto px-8 py-4 rounded-xl font-bold text-lg transition-all shadow-xl bg-purple-600 hover:bg-purple-500 text-white shadow-[0_0_20px_rgba(147,51,234,0.4)]";
+                content.innerHTML = `<i data-lucide="play" class="fill-current w-6 h-6"></i> LAUNCH SAUVC MISSION`;
+                
+                addLog('Executing: Ctrl+C (Stopping boat_mover_node)', 'cmd');
+                addLog('Mission Aborted.', 'error');
+            } else {
+                missionRunning = true;
+                btn.className = "flex items-center gap-3 mx-auto px-8 py-4 rounded-xl font-bold text-lg transition-all shadow-xl bg-red-600 hover:bg-red-700 text-white";
+                content.innerHTML = `<i data-lucide="square" class="fill-current w-6 h-6"></i> ABORT MISSION (CTRL+C)`;
+                
+                addLog('Executing: ros2 launch mavros apm.launch...', 'cmd');
+                addLog('Executing: ros2 run simple_boat stepper_node.py...', 'cmd');
+                addLog('Executing: ros2 run simple_boat boat_mover_node...', 'cmd');
+                
+                setTimeout(() => addLog('[boat_mover_node]: AMARINE ONLINE. MISSION STATE MACHINE READY.', 'success'), 1000);
+                setTimeout(() => addLog('[boat_mover_node]: PHASE 1: DIVING', 'info'), 2500);
+            }
+            refreshIcons();
+        }
+
+    </script>
+</body>
+</html>
