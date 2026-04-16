@@ -6,6 +6,8 @@
     <title>GUI Amarine - Advanced Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Tambahkan Socket.IO Client -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
     <style>
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -17,6 +19,7 @@
             font-family: 'Courier New', Courier, monospace;
             font-size: 0.75rem;
             line-height: 1.2;
+            white-space: pre-wrap; /* Pastikan log dari terminal tidak memanjang ke samping */
         }
     </style>
 </head>
@@ -263,15 +266,18 @@
     <script>
         lucide.createIcons();
 
-        // Process State Tracker
+        // 1. Inisialisasi koneksi Web Socket ke app.py Backend
+        const socket = io();
+
+        // Process State Tracker untuk UI Switcher
         const processes = {
-            gazebo: { running: false, interval: null, msgs: ["Loading world...", "Spawning ROV model...", "Physics engine ready.", "Publishing /clock"] },
-            sitl: { running: false, interval: null, msgs: ["Starting ArduSub SITL...", "Binding to TCP:5760", "IMU calibrated.", "GPS lock acquired."] },
-            mavros: { running: false, interval: null, msgs: ["Connecting to udp://127.0.0.1:14550", "FCU Connected!", "Got HEARTBEAT", "Requesting streams..."] },
-            ros1: { running: false, interval: null, msgs: ["Node started.", "Publishing topics...", "Service ready."] },
-            ros2: { running: false, interval: null, msgs: ["Subscribing to /vision/targets", "Calculating PID...", "Adjusting setpoint"] },
-            ros3: { running: false, interval: null, msgs: ["Stepper motor node active.", "Waiting for drop command...", "Mechanism armed."] },
-            vision: { running: false, interval: null, msgs: ["Starting Docker container...", "Loading YOLOv8 weights...", "CUDA Enabled.", "FPS: 28"] }
+            gazebo: { running: false },
+            sitl: { running: false },
+            mavros: { running: false },
+            ros1: { running: false },
+            ros2: { running: false },
+            ros3: { running: false },
+            vision: { running: false }
         };
 
         function getTimestamp() {
@@ -292,53 +298,57 @@
             document.getElementById(consoleId).innerHTML = '';
         }
 
+        // 2. Menerima Data (Stdout dari Terminal Jetson) dari Backend
+        socket.on('terminal_output', function(data) {
+            const consoleId = `console-${data.id}`;
+            const isError = data.is_error || false;
+            appendToConsole(consoleId, data.text, isError);
+        });
+
+        // FUNGSI UTAMA: Start / Kill terhubung ke Backend SocketIO
         function toggleProcess(id) {
             const btn = document.getElementById(`btn-${id}`);
             const consoleId = `console-${id}`;
             const proc = processes[id];
 
             if (proc.running) {
-                // KILL
+                // KILL - Beri tahu backend untuk mematikan (kirim CTRL+C)
                 proc.running = false;
-                clearInterval(proc.interval);
                 btn.innerText = 'Start';
                 btn.className = 'px-3 py-1 text-xs font-bold rounded bg-slate-700 hover:bg-slate-600 border border-slate-600 transition-colors w-20';
-                appendToConsole(consoleId, 'Process terminated (SIGINT).', true);
+                
+                // Kirim request via WebSocket
+                socket.emit('kill_process', { id: id });
             } else {
                 // START
-                let extraInfo = '';
+                let targetValue = 'default';
                 
-                // Fetch dropdown value if it's a dropdown-dependent process
+                // Ambil nilai dropdown jika ID butuh input (gazebo, ros1, ros2, ros3)
                 if(id === 'gazebo' || id === 'ros1' || id === 'ros2' || id === 'ros3') {
                     const select = id === 'gazebo' ? document.getElementById('gazebo-world') : document.getElementById(`${id}-pkg`);
                     if(!select.value) {
                         alert(`Please choose an option from the dropdown before starting!`);
                         return;
                     }
-                    extraInfo = ` [Target: ${select.options[select.selectedIndex].text}]`;
+                    targetValue = select.value;
                 }
 
                 proc.running = true;
                 btn.innerText = 'Kill';
                 btn.className = 'px-3 py-1 text-xs font-bold rounded bg-red-600 hover:bg-red-700 border border-red-500 text-white transition-colors w-20 shadow-[0_0_8px_rgba(220,38,38,0.5)]';
-                appendToConsole(consoleId, `Starting process...${extraInfo}`);
-
-                // Simulate random console outputs
-                let msgIndex = 0;
-                proc.interval = setInterval(() => {
-                    if (Math.random() > 0.3) { // 70% chance to print something per tick
-                        appendToConsole(consoleId, proc.msgs[msgIndex % proc.msgs.length]);
-                        msgIndex++;
-                    }
-                }, 800);
+                
+                // 3. Kirim permintaan (Start) ke backend via WebSocket
+                socket.emit('start_process', { 
+                    id: id, 
+                    target: targetValue 
+                });
             }
         }
 
         function logAction(msg) {
-            // Pick a random running console to dump general system logs, or use MAVROS as default
             const targetConsole = processes['mavros'].running ? 'console-mavros' : 'console-sitl';
-            appendToConsole(targetConsole, `[SYS] ${msg}`);
-            alert(msg); // Just for feedback in the browser
+            appendToConsole(targetConsole, `[GUI ACTION] ${msg}`);
+            // Di sini nanti bisa ditambahkan logic untuk interaksi web lain.
         }
 
         function killAll() {
@@ -347,10 +357,10 @@
                     toggleProcess(id);
                 }
             });
-            logAction("EMERGENCY KILL ALL EXECUTED.");
+            logAction("EMERGENCY KILL ALL EXECUTED. Terminating all SSH sessions.");
         }
 
-        // Simulate Hardware Monitoring fluctuations
+        // Simulasi Hardware Monitoring (Ini bisa dihubungkan juga ke Backend paramiko nantinya jika mau baca htop/tegrastats)
         setInterval(() => {
             if(Math.random() > 0.5) {
                 const cpu = Math.floor(Math.random() * 40) + 10;
