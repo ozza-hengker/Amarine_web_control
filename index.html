@@ -17,356 +17,301 @@
         /* Terminal text style */
         .terminal-text {
             font-family: 'Courier New', Courier, monospace;
-            font-size: 0.75rem;
-            line-height: 1.2;
-            white-space: pre-wrap; /* Pastikan log dari terminal tidak memanjang ke samping */
+            font-size: 0.8rem;
+            line-height: 1.4;
+            white-space: pre-wrap; 
         }
     </style>
 </head>
-<body class="bg-slate-950 h-screen w-screen p-4 flex items-center justify-center font-sans text-slate-300 overflow-hidden">
+<body class="bg-slate-950 h-screen w-screen p-6 flex items-center justify-center font-sans text-slate-300 overflow-hidden">
 
-    <!-- MAIN APPLICATION WINDOW (Mimics the sketch's rounded frame) -->
-    <div class="w-full h-full max-w-[1600px] bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl flex flex-col overflow-hidden relative">
+    <!-- MAIN APPLICATION CONTAINER -->
+    <div class="w-full h-full max-w-[1400px] bg-slate-900 border-2 border-slate-700 rounded-2xl shadow-2xl p-6 flex flex-col gap-6">
         
-        <!-- WINDOW HEADER -->
-        <div class="h-10 bg-slate-800 border-b border-slate-700 flex items-center justify-between px-4 shrink-0">
-            <div class="w-20"></div> <!-- Spacer for centering -->
-            <h1 class="font-bold text-slate-200 tracking-wider text-sm flex items-center gap-2">
-                <i data-lucide="layout-dashboard" class="w-4 h-4 text-blue-400"></i> GUI Amarine
-            </h1>
-            <!-- Mac-style buttons -->
-            <div class="flex gap-2 w-20 justify-end">
-                <div class="w-3 h-3 rounded-full bg-slate-600 hover:bg-green-500 cursor-pointer transition-colors"></div>
-                <div class="w-3 h-3 rounded-full bg-slate-600 hover:bg-yellow-500 cursor-pointer transition-colors"></div>
-                <div class="w-3 h-3 rounded-full bg-slate-600 hover:bg-red-500 cursor-pointer transition-colors"></div>
-            </div>
+        <!-- TOP BAR: Connection & Arming -->
+        <div class="flex gap-4 shrink-0">
+            <button id="btn-ssh" onclick="toggleSsh()" class="px-6 py-3 bg-slate-800 border-2 border-slate-600 rounded-xl font-bold text-slate-300 hover:bg-slate-700 hover:text-white transition-all flex items-center gap-2 shadow-lg w-48 justify-center">
+                <i data-lucide="wifi-off" class="w-5 h-5"></i> <span id="ssh-text">Connect Jetson</span>
+            </button>
+            <button id="btn-arm" onclick="toggleArm()" class="px-6 py-3 bg-slate-800 border-2 border-slate-600 rounded-xl font-bold text-slate-300 hover:bg-slate-700 hover:text-white transition-all flex items-center gap-2 shadow-lg w-48 justify-center">
+                <i data-lucide="shield" class="w-5 h-5"></i> <span id="arm-text">Arm/Disarm</span>
+            </button>
         </div>
 
-        <!-- MAIN GRID CONTENT -->
-        <div class="flex-1 p-3 grid grid-cols-1 md:grid-cols-3 grid-rows-3 gap-3 min-h-0">
-
-            <!-- ================= ROW 1 ================= -->
+        <!-- MAIN CONTENT: Split Layout -->
+        <div class="flex-1 flex flex-col md:flex-row gap-6 min-h-0">
             
-            <!-- PANEL 1: Gazebo -->
-            <div class="flex flex-col gap-2 min-h-0">
-                <div class="flex gap-2 shrink-0">
-                    <select id="gazebo-world" class="flex-1 bg-slate-800 border border-slate-600 rounded px-2 text-xs outline-none focus:border-blue-500 cursor-pointer">
-                        <option value="" disabled selected>Choose Gazebo World</option>
-                        <option value="qual">Qualification</option>
-                        <option value="final">Final</option>
-                    </select>
-                    <button onclick="toggleProcess('gazebo')" id="btn-gazebo" class="px-3 py-1 text-xs font-bold rounded bg-slate-700 hover:bg-slate-600 border border-slate-600 transition-colors w-20">Start</button>
-                </div>
-                <div class="flex-1 bg-black rounded-lg border border-slate-700 relative flex flex-col overflow-hidden shadow-inner">
-                    <button onclick="clearConsole('console-gazebo')" class="absolute top-2 right-2 bg-slate-200 hover:bg-white text-slate-900 text-[10px] font-bold px-2 py-0.5 rounded shadow z-10">Clear</button>
-                    <div id="console-gazebo" class="terminal-text p-2 flex-1 overflow-y-auto text-slate-400">Waiting for Gazebo launch...</div>
-                </div>
-            </div>
-
-            <!-- PANEL 2: SITL -->
-            <div class="flex flex-col gap-2 min-h-0">
-                <div class="flex gap-2 shrink-0">
-                    <div class="flex-1 bg-slate-800 border border-slate-600 rounded px-2 flex items-center justify-center text-xs font-semibold">SITL Simulator</div>
-                    <button onclick="toggleProcess('sitl')" id="btn-sitl" class="px-3 py-1 text-xs font-bold rounded bg-slate-700 hover:bg-slate-600 border border-slate-600 transition-colors w-20">Start</button>
-                </div>
-                <div class="flex-1 bg-black rounded-lg border border-slate-700 relative flex flex-col overflow-hidden shadow-inner">
-                    <button onclick="clearConsole('console-sitl')" class="absolute top-2 right-2 bg-slate-200 hover:bg-white text-slate-900 text-[10px] font-bold px-2 py-0.5 rounded shadow z-10">Clear</button>
-                    <div id="console-sitl" class="terminal-text p-2 flex-1 overflow-y-auto text-blue-400">SITL Status: Offline</div>
-                </div>
-            </div>
-
-            <!-- PANEL 3: MAVROS -->
-            <div class="flex flex-col gap-2 min-h-0">
-                <div class="flex gap-2 shrink-0">
-                    <div class="flex-1 bg-slate-800 border border-slate-600 rounded px-2 flex items-center justify-center text-xs font-semibold">MAVROS Bridge</div>
-                    <button onclick="toggleProcess('mavros')" id="btn-mavros" class="px-3 py-1 text-xs font-bold rounded bg-slate-700 hover:bg-slate-600 border border-slate-600 transition-colors w-20">Start</button>
-                </div>
-                <div class="flex-1 bg-black rounded-lg border border-slate-700 relative flex flex-col overflow-hidden shadow-inner">
-                    <button onclick="clearConsole('console-mavros')" class="absolute top-2 right-2 bg-slate-200 hover:bg-white text-slate-900 text-[10px] font-bold px-2 py-0.5 rounded shadow z-10">Clear</button>
-                    <div id="console-mavros" class="terminal-text p-2 flex-1 overflow-y-auto text-green-400">MAVROS Status: Offline</div>
-                </div>
-            </div>
-
-            <!-- ================= ROW 2 ================= -->
-
-            <!-- PANEL 4: ROS2 Pkg 1 -->
-            <div class="flex flex-col gap-2 min-h-0">
-                <div class="flex gap-2 shrink-0">
-                    <select id="ros1-pkg" class="flex-1 bg-slate-800 border border-slate-600 rounded px-2 text-xs outline-none focus:border-blue-500 cursor-pointer">
-                        <option value="" disabled selected>Choose ROS2 Package</option>
-                        <option value="build">Build</option>
-                        <option value="test">Test</option>
-                        <option value="arm">Arm</option>
-                        <option value="qual">Qualification</option>
-                        <option value="final">Final</option>
-                    </select>
-                    <button onclick="toggleProcess('ros1')" id="btn-ros1" class="px-3 py-1 text-xs font-bold rounded bg-slate-700 hover:bg-slate-600 border border-slate-600 transition-colors w-20">Start</button>
-                </div>
-                <div class="flex-1 bg-black rounded-lg border border-slate-700 relative flex flex-col overflow-hidden shadow-inner">
-                    <button onclick="clearConsole('console-ros1')" class="absolute top-2 right-2 bg-slate-200 hover:bg-white text-slate-900 text-[10px] font-bold px-2 py-0.5 rounded shadow z-10">Clear</button>
-                    <div id="console-ros1" class="terminal-text p-2 flex-1 overflow-y-auto text-yellow-400">Node 1 output...</div>
-                </div>
-            </div>
-
-            <!-- PANEL 5: ROS2 Pkg 2 -->
-            <div class="flex flex-col gap-2 min-h-0">
-                <div class="flex gap-2 shrink-0">
-                    <select id="ros2-pkg" class="flex-1 bg-slate-800 border border-slate-600 rounded px-2 text-xs outline-none focus:border-blue-500 cursor-pointer">
-                        <option value="" disabled selected>Choose ROS2 Package</option>
-                        <option value="build">Build</option>
-                        <option value="test">Test</option>
-                        <option value="arm">Arm</option>
-                        <option value="qual">Qualification</option>
-                        <option value="final">Final</option>
-                    </select>
-                    <button onclick="toggleProcess('ros2')" id="btn-ros2" class="px-3 py-1 text-xs font-bold rounded bg-slate-700 hover:bg-slate-600 border border-slate-600 transition-colors w-20">Start</button>
-                </div>
-                <div class="flex-1 bg-black rounded-lg border border-slate-700 relative flex flex-col overflow-hidden shadow-inner">
-                    <button onclick="clearConsole('console-ros2')" class="absolute top-2 right-2 bg-slate-200 hover:bg-white text-slate-900 text-[10px] font-bold px-2 py-0.5 rounded shadow z-10">Clear</button>
-                    <div id="console-ros2" class="terminal-text p-2 flex-1 overflow-y-auto text-yellow-400">Node 2 output...</div>
-                </div>
-            </div>
-
-            <!-- PANEL 6: ROS2 Pkg 3 -->
-            <div class="flex flex-col gap-2 min-h-0">
-                <div class="flex gap-2 shrink-0">
-                    <select id="ros3-pkg" class="flex-1 bg-slate-800 border border-slate-600 rounded px-2 text-xs outline-none focus:border-blue-500 cursor-pointer">
-                        <option value="" disabled selected>Choose ROS2 Package</option>
-                        <option value="build">Build</option>
-                        <option value="test">Test</option>
-                        <option value="arm">Arm</option>
-                        <option value="qual">Qualification</option>
-                        <option value="final">Final</option>
-                    </select>
-                    <button onclick="toggleProcess('ros3')" id="btn-ros3" class="px-3 py-1 text-xs font-bold rounded bg-slate-700 hover:bg-slate-600 border border-slate-600 transition-colors w-20">Start</button>
-                </div>
-                <div class="flex-1 bg-black rounded-lg border border-slate-700 relative flex flex-col overflow-hidden shadow-inner">
-                    <button onclick="clearConsole('console-ros3')" class="absolute top-2 right-2 bg-slate-200 hover:bg-white text-slate-900 text-[10px] font-bold px-2 py-0.5 rounded shadow z-10">Clear</button>
-                    <div id="console-ros3" class="terminal-text p-2 flex-1 overflow-y-auto text-yellow-400">Node 3 output...</div>
-                </div>
-            </div>
-
-            <!-- ================= ROW 3 ================= -->
-
-            <!-- PANEL 7: Vision Docker -->
-            <div class="flex flex-col gap-2 min-h-0">
-                <div class="flex gap-2 shrink-0">
-                    <div class="flex-1 bg-slate-800 border border-slate-600 rounded px-2 flex items-center justify-center text-xs font-semibold text-purple-300">Vision Docker</div>
-                    <button onclick="toggleProcess('vision')" id="btn-vision" class="px-3 py-1 text-xs font-bold rounded bg-slate-700 hover:bg-slate-600 border border-slate-600 transition-colors w-20">Start</button>
-                </div>
-                <div class="flex-1 bg-black rounded-lg border border-slate-700 relative flex flex-col overflow-hidden shadow-inner">
-                    <button onclick="clearConsole('console-vision')" class="absolute top-2 right-2 bg-slate-200 hover:bg-white text-slate-900 text-[10px] font-bold px-2 py-0.5 rounded shadow z-10">Clear</button>
-                    <div id="console-vision" class="terminal-text p-2 flex-1 overflow-y-auto text-purple-400">YOLOv8 Docker Container offline.</div>
-                </div>
-            </div>
-
-            <!-- PANEL 8: Action Buttons Grid -->
-            <div class="grid grid-cols-2 gap-2 min-h-0">
-                <button onclick="logAction('Opening Camera Bridge...')" class="bg-slate-800 hover:bg-blue-900 border border-slate-600 rounded text-xs font-semibold transition-colors flex items-center justify-center gap-2">
-                    <i data-lucide="camera" class="w-3 h-3"></i> Camera Bridge
-                </button>
-                <button onclick="logAction('Action ? executed...')" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded text-xs font-semibold transition-colors">?</button>
+            <!-- LEFT COLUMN: Controls & Monitoring -->
+            <div class="w-full md:w-3/5 flex flex-col gap-6 h-full">
                 
-                <button onclick="logAction('Action ? executed...')" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded text-xs font-semibold transition-colors">?</button>
-                <button onclick="logAction('Opening BLHeli Suite...')" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded text-xs font-semibold transition-colors flex items-center justify-center gap-2">
-                    <i data-lucide="settings-2" class="w-3 h-3"></i> Open BLHeli
-                </button>
-                
-                <button onclick="logAction('Opening RQT Graph...')" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded text-xs font-semibold transition-colors flex items-center justify-center gap-2">
-                    <i data-lucide="git-merge" class="w-3 h-3"></i> Open RQT
-                </button>
-                <button onclick="logAction('Opening RViz...')" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded text-xs font-semibold transition-colors flex items-center justify-center gap-2">
-                    <i data-lucide="box" class="w-3 h-3"></i> Open RViz
-                </button>
-                
-                <button onclick="logAction('Opening QGroundControl...')" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded text-xs font-semibold transition-colors flex items-center justify-center gap-2">
-                    <i data-lucide="crosshair" class="w-3 h-3"></i> Open Qground
-                </button>
-                <button onclick="logAction('Opening VSCode Workspace...')" class="bg-slate-800 hover:bg-blue-900 border border-slate-600 rounded text-xs font-semibold transition-colors flex items-center justify-center gap-2">
-                    <i data-lucide="code" class="w-3 h-3"></i> Open VSCode
-                </button>
-                
-                <select id="power-mode" class="bg-slate-800 border border-slate-600 rounded text-xs font-semibold outline-none focus:border-blue-500 cursor-pointer text-center appearance-none">
-                    <option value="" disabled selected>Choose Power Mode</option>
-                    <option value="1">Power Mode 1</option>
-                    <option value="2">Power Mode 2</option>
-                    <option value="3">Power Mode 3</option>
-                    <option value="4">Power Mode 4 (Max)</option>
-                </select>
-                <button onclick="logAction('Opening New Terminal Instance...')" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded text-xs font-semibold transition-colors flex items-center justify-center gap-2">
-                    <i data-lucide="terminal-square" class="w-3 h-3"></i> Open Terminal
-                </button>
+                <!-- ROV MODE PANEL -->
+                <div class="flex-1 bg-slate-800/40 border-2 border-slate-600 rounded-2xl relative flex items-center justify-center group hover:border-blue-500 transition-colors shadow-inner min-h-[120px]">
+                    <button id="btn-rov" onclick="toggleProcess('rov')" class="absolute top-4 right-4 px-4 py-2 bg-slate-700 border border-slate-500 rounded-lg text-xs font-bold tracking-wider hover:bg-slate-600 transition-colors uppercase z-10">
+                        START / STOP
+                    </button>
+                    <h2 class="text-3xl font-bold tracking-widest text-slate-300 group-hover:text-white transition-colors">ROV MODE</h2>
+                </div>
 
-                <button onclick="logAction('Opening Settings...')" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded text-xs font-semibold transition-colors flex items-center justify-center gap-2">
-                    <i data-lucide="sliders" class="w-3 h-3"></i> Settings
-                </button>
-                <button onclick="killAll()" class="bg-red-900/50 hover:bg-red-700 border border-red-800 rounded text-white text-xs font-bold transition-colors flex items-center justify-center gap-2 shadow-[0_0_10px_rgba(220,38,38,0.3)]">
-                    <i data-lucide="skull" class="w-3 h-3"></i> Kill All
-                </button>
-            </div>
+                <!-- AUV MODE PANEL -->
+                <div class="flex-1 bg-slate-800/40 border-2 border-slate-600 rounded-2xl relative flex flex-col items-center justify-center group hover:border-purple-500 transition-colors shadow-inner min-h-[120px]">
+                    <button id="btn-auv" onclick="toggleProcess('auv')" class="absolute top-4 right-4 px-4 py-2 bg-slate-700 border border-slate-500 rounded-lg text-xs font-bold tracking-wider hover:bg-slate-600 transition-colors uppercase z-10">
+                        START / STOP
+                    </button>
+                    <h2 class="text-3xl font-bold tracking-widest text-slate-300 group-hover:text-white transition-colors">AUV</h2>
+                    <span class="text-lg font-mono text-slate-500 group-hover:text-purple-400 transition-colors mt-2">(boat_mover_node)</span>
+                </div>
 
-            <!-- PANEL 9: System Monitoring -->
-            <div class="bg-slate-800 rounded-lg border border-slate-600 p-4 flex flex-col min-h-0 shadow-inner">
-                <h3 class="text-center font-bold text-slate-200 mb-4 tracking-wide uppercase text-sm border-b border-slate-600 pb-2 flex items-center justify-center gap-2">
-                    <i data-lucide="activity" class="w-4 h-4 text-emerald-400"></i> Hardware Monitoring
-                </h3>
-                
-                <div class="flex-1 flex flex-col justify-around gap-2 text-sm font-mono">
-                    <!-- CPU -->
-                    <div>
-                        <div class="flex justify-between text-slate-300 mb-1">
-                            <span>CPU</span> <span id="val-cpu" class="text-emerald-400">12%</span>
+                <!-- MONITORING PANEL -->
+                <div class="flex-1 bg-slate-800/40 border-2 border-slate-600 rounded-2xl p-6 flex flex-col justify-center shadow-inner min-h-[180px]">
+                    <div class="font-bold text-lg text-slate-200 mb-4 border-b border-slate-600 pb-2 flex items-center gap-2">
+                        <i data-lucide="activity" class="w-5 h-5 text-emerald-400"></i> Monitoring :
+                    </div>
+                    
+                    <div class="flex flex-col gap-3 px-4 font-mono text-sm text-slate-300">
+                        <div class="flex items-center">
+                            <span class="w-24">- CPU</span> 
+                            <span id="val-cpu" class="text-emerald-400 font-bold w-16 text-right">0%</span>
+                            <div class="ml-4 flex-1 bg-slate-900 rounded-full h-1.5 overflow-hidden"><div id="bar-cpu" class="bg-emerald-500 h-full w-0 transition-all duration-500"></div></div>
                         </div>
-                        <div class="w-full bg-slate-900 rounded-full h-2">
-                            <div id="bar-cpu" class="bg-emerald-500 h-2 rounded-full" style="width: 12%"></div>
+                        <div class="flex items-center">
+                            <span class="w-24">- GPU</span> 
+                            <span id="val-gpu" class="text-emerald-400 font-bold w-16 text-right">0%</span>
+                            <div class="ml-4 flex-1 bg-slate-900 rounded-full h-1.5 overflow-hidden"><div id="bar-gpu" class="bg-emerald-500 h-full w-0 transition-all duration-500"></div></div>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="w-24">- Memory</span> 
+                            <span id="val-mem" class="text-yellow-400 font-bold w-16 text-right">0 GB</span>
+                            <div class="ml-4 flex-1 bg-slate-900 rounded-full h-1.5 overflow-hidden"><div id="bar-mem" class="bg-yellow-500 h-full w-0 transition-all duration-500"></div></div>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="w-24">- Temp</span> 
+                            <span id="val-temp" class="text-orange-400 font-bold w-16 text-right">0°C</span>
+                            <div class="ml-4 flex-1 bg-slate-900 rounded-full h-1.5 overflow-hidden"><div id="bar-temp" class="bg-orange-500 h-full w-0 transition-all duration-500"></div></div>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="w-24">- Watt</span> 
+                            <span id="val-watt" class="text-blue-400 font-bold w-16 text-right">0 W</span>
+                            <div class="ml-4 flex-1 bg-slate-900 rounded-full h-1.5 overflow-hidden"><div id="bar-watt" class="bg-blue-500 h-full w-0 transition-all duration-500"></div></div>
                         </div>
                     </div>
-                    <!-- GPU -->
-                    <div>
-                        <div class="flex justify-between text-slate-300 mb-1">
-                            <span>GPU (Jetson)</span> <span id="val-gpu" class="text-emerald-400">45%</span>
-                        </div>
-                        <div class="w-full bg-slate-900 rounded-full h-2">
-                            <div id="bar-gpu" class="bg-emerald-500 h-2 rounded-full" style="width: 45%"></div>
-                        </div>
-                    </div>
-                    <!-- Memory -->
-                    <div>
-                        <div class="flex justify-between text-slate-300 mb-1">
-                            <span>Memory</span> <span id="val-mem" class="text-yellow-400">4.2/8 GB</span>
-                        </div>
-                        <div class="w-full bg-slate-900 rounded-full h-2">
-                            <div id="bar-mem" class="bg-yellow-500 h-2 rounded-full" style="width: 52%"></div>
-                        </div>
-                    </div>
-                    <!-- Temp -->
-                    <div>
-                        <div class="flex justify-between text-slate-300 mb-1">
-                            <span>Temperature</span> <span id="val-temp" class="text-orange-400">48°C</span>
-                        </div>
-                        <div class="w-full bg-slate-900 rounded-full h-2">
-                            <div id="bar-temp" class="bg-orange-500 h-2 rounded-full" style="width: 48%"></div>
-                        </div>
-                    </div>
-                    <!-- Power -->
-                    <div>
-                        <div class="flex justify-between text-slate-300 mb-1">
-                            <span>Power Draw</span> <span id="val-watt" class="text-blue-400">15.4 W</span>
-                        </div>
-                        <div class="w-full bg-slate-900 rounded-full h-2">
-                            <div id="bar-watt" class="bg-blue-500 h-2 rounded-full" style="width: 30%"></div>
-                        </div>
-                    </div>
+                </div>
+
+            </div>
+
+            <!-- RIGHT COLUMN: Console Preview -->
+            <div class="w-full md:w-2/5 h-full bg-[#0a0a0a] border-2 border-slate-700 rounded-2xl flex flex-col relative overflow-hidden shadow-2xl">
+                
+                <div class="absolute top-0 left-0 w-full h-10 bg-slate-800/80 backdrop-blur-sm border-b border-slate-700 flex items-center justify-between px-4 z-10">
+                    <span class="font-mono text-xs font-bold tracking-widest text-slate-400">Console Preview</span>
+                    <button onclick="clearConsole()" class="text-[10px] uppercase font-bold bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded transition-colors">Clear</button>
+                </div>
+
+                <div id="main-console" class="terminal-text p-6 pt-14 flex-1 overflow-y-auto text-slate-300">
+                    <div class="text-slate-500 italic">Welcome to Amarine GCS. Waiting for connection...</div>
                 </div>
             </div>
 
         </div>
     </div>
 
+    <!-- JAVASCRIPT LOGIC -->
     <script>
         lucide.createIcons();
 
         // 1. Inisialisasi koneksi Web Socket ke app.py Backend
         const socket = io();
 
-        // Process State Tracker untuk UI Switcher
+        // State Variables
+        let sshConnected = false;
+        let isArmed = false;
         const processes = {
-            gazebo: { running: false },
-            sitl: { running: false },
-            mavros: { running: false },
-            ros1: { running: false },
-            ros2: { running: false },
-            ros3: { running: false },
-            vision: { running: false }
+            rov: { running: false, interval: null },
+            auv: { running: false, interval: null, timer: 0 }
         };
+
+        // Kodingan AUV Skenario (Sesuai dengan boat_mover_node.cpp milik Ozza)
+        const auvScenario = [
+            { t: 0.0, msg: "SIAP! Skenario 10 Detik. Yaw & Lateral sudah dibalik (Inverted)." },
+            { t: 0.5, msg: "Time 0.0: STANDBY..." },
+            { t: 3.0, msg: "Time 3.0: MAJU..." },
+            { t: 13.0, msg: "Time 13.0: YAW KANAN (Putar)..." },
+            { t: 23.0, msg: "Time 23.0: YAW KIRI (Putar)..." },
+            { t: 33.0, msg: "Time 33.0: MUNCUL (Naik)..." },
+            { t: 43.0, msg: "Time 43.0: MENYELAM (Turun)..." },
+            { t: 53.0, msg: "Time 53.0: LATERAL KANAN (Geser)..." },
+            { t: 63.0, msg: "Time 63.0: LATERAL KIRI (Geser)..." },
+            { t: 73.0, msg: "Time 73.0: MUNDUR..." },
+            { t: 83.0, msg: "Time 83.0: SELESAI. Stop." },
+        ];
 
         function getTimestamp() {
             const now = new Date();
             return `[${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}]`;
         }
 
-        function appendToConsole(consoleId, text, isError = false) {
-            const con = document.getElementById(consoleId);
+        function appendToConsole(text, type = 'normal') {
+            const con = document.getElementById('main-console');
             const div = document.createElement('div');
-            div.className = isError ? 'text-red-400' : '';
+            
+            if(type === 'error') div.className = 'text-red-400 font-bold';
+            else if(type === 'success') div.className = 'text-emerald-400 font-bold';
+            else if(type === 'cmd') div.className = 'text-blue-300 font-bold';
+            else if(type === 'auv') div.className = 'text-purple-300';
+            else div.className = 'text-slate-300';
+            
             div.innerText = `${getTimestamp()} ${text}`;
             con.appendChild(div);
             con.scrollTop = con.scrollHeight; // Auto-scroll
         }
 
-        function clearConsole(consoleId) {
-            document.getElementById(consoleId).innerHTML = '';
+        function clearConsole() {
+            document.getElementById('main-console').innerHTML = '';
         }
 
-        // 2. Menerima Data (Stdout dari Terminal Jetson) dari Backend
+        // Menerima Data dari Backend
         socket.on('terminal_output', function(data) {
-            const consoleId = `console-${data.id}`;
-            const isError = data.is_error || false;
-            appendToConsole(consoleId, data.text, isError);
+            appendToConsole(data.text, data.is_error ? 'error' : 'normal');
         });
 
-        // FUNGSI UTAMA: Start / Kill terhubung ke Backend SocketIO
+        // --- BUTTON HANDLERS ---
+
+        function toggleSsh() {
+            const btn = document.getElementById('btn-ssh');
+            const text = document.getElementById('ssh-text');
+            const icon = btn.querySelector('i');
+
+            if (sshConnected) {
+                sshConnected = false;
+                if(isArmed) toggleArm();
+                if(processes.rov.running) toggleProcess('rov');
+                if(processes.auv.running) toggleProcess('auv');
+
+                btn.className = "px-6 py-3 bg-slate-800 border-2 border-slate-600 rounded-xl font-bold text-slate-300 hover:bg-slate-700 hover:text-white transition-all flex items-center gap-2 shadow-lg w-48 justify-center";
+                text.innerText = "Connect Jetson";
+                icon.setAttribute("data-lucide", "wifi-off");
+                appendToConsole("SSH Connection Closed.", "error");
+            } else {
+                appendToConsole("Attempting SSH connection to amarine@ubuntu.local...", "normal");
+                btn.className = "px-6 py-3 bg-slate-800 border-2 border-slate-600 rounded-xl font-bold text-slate-300 flex items-center gap-2 shadow-lg w-48 justify-center opacity-70 cursor-wait";
+                text.innerText = "Connecting...";
+                
+                // Simulate Connection Delay
+                setTimeout(() => {
+                    sshConnected = true;
+                    btn.className = "px-6 py-3 bg-green-900/40 border-2 border-green-600/50 rounded-xl font-bold text-green-400 hover:bg-red-900/40 hover:text-red-400 hover:border-red-600/50 transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(34,197,94,0.2)] w-48 justify-center";
+                    text.innerText = "Connected";
+                    icon.setAttribute("data-lucide", "wifi");
+                    lucide.createIcons();
+                    appendToConsole("SSH Connection Established successfully!", "success");
+                }, 1500);
+            }
+            lucide.createIcons();
+        }
+
+        function toggleArm() {
+            if (!sshConnected) {
+                appendToConsole("Cannot Arm: Jetson is not connected!", "error");
+                return;
+            }
+
+            const btn = document.getElementById('btn-arm');
+            const text = document.getElementById('arm-text');
+            const icon = btn.querySelector('i');
+
+            if (isArmed) {
+                isArmed = false;
+                btn.className = "px-6 py-3 bg-slate-800 border-2 border-slate-600 rounded-xl font-bold text-slate-300 hover:bg-slate-700 hover:text-white transition-all flex items-center gap-2 shadow-lg w-48 justify-center";
+                text.innerText = "Arm/Disarm";
+                icon.setAttribute("data-lucide", "shield");
+                appendToConsole('Executing: ros2 service call /mavros/cmd/arming "{value: False}"', 'cmd');
+                setTimeout(() => appendToConsole('DISARMED. Thrusters disabled.', 'error'), 500);
+            } else {
+                isArmed = true;
+                btn.className = "px-6 py-3 bg-red-600/20 border-2 border-red-600 rounded-xl font-bold text-red-500 hover:bg-slate-800 hover:border-slate-600 hover:text-slate-300 transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(220,38,38,0.3)] animate-pulse w-48 justify-center";
+                text.innerText = "DISARM (KILL)";
+                icon.setAttribute("data-lucide", "shield-alert");
+                appendToConsole('Executing: ros2 service call /mavros/cmd/arming "{value: True}"', 'cmd');
+                setTimeout(() => appendToConsole('ARMED! Thrusters are LIVE.', 'success'), 500);
+            }
+            lucide.createIcons();
+        }
+
         function toggleProcess(id) {
+            if (!sshConnected) {
+                appendToConsole(`Cannot start ${id.toUpperCase()}: Jetson is not connected!`, "error");
+                return;
+            }
+            if (!isArmed && id === 'auv') {
+                appendToConsole(`Cannot start AUV Mission: Drone must be ARMED first!`, "error");
+                return;
+            }
+
             const btn = document.getElementById(`btn-${id}`);
-            const consoleId = `console-${id}`;
             const proc = processes[id];
 
+            // Cegah nyalakan ROV dan AUV bersamaan
+            const otherId = id === 'rov' ? 'auv' : 'rov';
+            if (!proc.running && processes[otherId].running) {
+                appendToConsole(`Please stop ${otherId.toUpperCase()} mode before starting ${id.toUpperCase()}.`, "error");
+                return;
+            }
+
             if (proc.running) {
-                // KILL - Beri tahu backend untuk mematikan (kirim CTRL+C)
+                // STOP PROCESS
                 proc.running = false;
-                btn.innerText = 'Start';
-                btn.className = 'px-3 py-1 text-xs font-bold rounded bg-slate-700 hover:bg-slate-600 border border-slate-600 transition-colors w-20';
+                clearInterval(proc.interval);
+                btn.className = "absolute top-4 right-4 px-4 py-2 bg-slate-700 border border-slate-500 rounded-lg text-xs font-bold tracking-wider hover:bg-slate-600 transition-colors uppercase z-10 text-slate-300";
                 
-                // Kirim request via WebSocket
+                if(id === 'auv') appendToConsole('Mission Aborted (Ctrl+C sent).', 'error');
+                else appendToConsole(`${id.toUpperCase()} Mode Deactivated.`, 'normal');
+                
+                // Kirim request ke backend via socket
                 socket.emit('kill_process', { id: id });
+
             } else {
-                // START
-                let targetValue = 'default';
+                // START PROCESS
+                proc.running = true;
+                proc.timer = 0;
+                btn.className = "absolute top-4 right-4 px-4 py-2 bg-red-600 border border-red-500 rounded-lg text-xs font-bold tracking-wider hover:bg-red-700 transition-colors uppercase z-10 text-white shadow-[0_0_10px_rgba(220,38,38,0.5)]";
                 
-                // Ambil nilai dropdown jika ID butuh input (gazebo, ros1, ros2, ros3)
-                if(id === 'gazebo' || id === 'ros1' || id === 'ros2' || id === 'ros3') {
-                    const select = id === 'gazebo' ? document.getElementById('gazebo-world') : document.getElementById(`${id}-pkg`);
-                    if(!select.value) {
-                        alert(`Please choose an option from the dropdown before starting!`);
-                        return;
-                    }
-                    targetValue = select.value;
+                appendToConsole(`Starting ${id.toUpperCase()}...`, 'cmd');
+
+                // Simulasi Script boat_mover_node yang baru
+                if (id === 'auv') {
+                    appendToConsole('ros2 run simple_boat boat_mover_node', 'cmd');
+                    
+                    let scenarioIndex = 0;
+                    proc.interval = setInterval(() => {
+                        proc.timer += 0.5; // simulasi tick waktu
+                        
+                        // Cek apakah ada pesan sesuai waktu di scenario
+                        if (scenarioIndex < auvScenario.length && proc.timer >= auvScenario[scenarioIndex].t) {
+                            appendToConsole(`[boat_mover_node] ${auvScenario[scenarioIndex].msg}`, 'auv');
+                            scenarioIndex++;
+                        }
+
+                        // Auto stop kalau skenario habis
+                        if (proc.timer > 85.0) {
+                            toggleProcess('auv');
+                        }
+                    }, 500);
+                } else if (id === 'rov') {
+                    appendToConsole('ROV Teleoperation node started. Awaiting joystick input...', 'normal');
                 }
 
-                proc.running = true;
-                btn.innerText = 'Kill';
-                btn.className = 'px-3 py-1 text-xs font-bold rounded bg-red-600 hover:bg-red-700 border border-red-500 text-white transition-colors w-20 shadow-[0_0_8px_rgba(220,38,38,0.5)]';
-                
-                // 3. Kirim permintaan (Start) ke backend via WebSocket
-                socket.emit('start_process', { 
-                    id: id, 
-                    target: targetValue 
-                });
+                // Kirim request ke backend via socket
+                socket.emit('start_process', { id: id, target: 'default' });
             }
         }
 
-        function logAction(msg) {
-            const targetConsole = processes['mavros'].running ? 'console-mavros' : 'console-sitl';
-            appendToConsole(targetConsole, `[GUI ACTION] ${msg}`);
-            // Di sini nanti bisa ditambahkan logic untuk interaksi web lain.
-        }
-
-        function killAll() {
-            Object.keys(processes).forEach(id => {
-                if (processes[id].running) {
-                    toggleProcess(id);
-                }
-            });
-            logAction("EMERGENCY KILL ALL EXECUTED. Terminating all SSH sessions.");
-        }
-
-        // Simulasi Hardware Monitoring (Ini bisa dihubungkan juga ke Backend paramiko nantinya jika mau baca htop/tegrastats)
+        // Hardware Monitoring Live Simulation (Meniru Jetson)
         setInterval(() => {
-            if(Math.random() > 0.5) {
-                const cpu = Math.floor(Math.random() * 40) + 10;
-                const gpu = Math.floor(Math.random() * 60) + 20;
-                const temp = Math.floor(Math.random() * 15) + 40;
-                const watt = (Math.random() * 10 + 10).toFixed(1);
+            if(sshConnected && Math.random() > 0.3) {
+                const cpu = Math.floor(Math.random() * 30) + 15; // 15-45%
+                const gpu = Math.floor(Math.random() * 50) + (processes.auv.running ? 40 : 10); // GPU naik kalau AUV jalan
+                const mem = (Math.random() * 0.5 + 4.2).toFixed(1); // ~4GB
+                const temp = Math.floor(Math.random() * 10) + (processes.auv.running ? 50 : 40); // 40-60C
+                const watt = (Math.random() * 5 + (isArmed ? 15 : 5)).toFixed(1); // Naik kalau Armed
 
                 document.getElementById('val-cpu').innerText = `${cpu}%`;
                 document.getElementById('bar-cpu').style.width = `${cpu}%`;
@@ -374,13 +319,25 @@
                 document.getElementById('val-gpu').innerText = `${gpu}%`;
                 document.getElementById('bar-gpu').style.width = `${gpu}%`;
 
+                document.getElementById('val-mem').innerText = `${mem} GB`;
+                document.getElementById('bar-mem').style.width = `${(mem/8)*100}%`;
+
                 document.getElementById('val-temp').innerText = `${temp}°C`;
                 document.getElementById('bar-temp').style.width = `${Math.min(temp, 100)}%`;
+                
+                // Ubah warna temp kalau panas
+                document.getElementById('bar-temp').className = temp > 55 ? "bg-red-500 h-full w-0 transition-all duration-500" : "bg-orange-500 h-full w-0 transition-all duration-500";
 
                 document.getElementById('val-watt').innerText = `${watt} W`;
-                document.getElementById('bar-watt').style.width = `${Math.min((watt/40)*100, 100)}%`;
+                document.getElementById('bar-watt').style.width = `${Math.min((watt/30)*100, 100)}%`;
+            } else if (!sshConnected) {
+                // Reset kalau disconnect
+                ['cpu', 'gpu', 'mem', 'temp', 'watt'].forEach(id => {
+                    document.getElementById(`val-${id}`).innerText = id === 'mem' ? '0 GB' : id === 'temp' ? '0°C' : id === 'watt' ? '0 W' : '0%';
+                    document.getElementById(`bar-${id}`).style.width = '0%';
+                });
             }
-        }, 2000);
+        }, 1500);
 
     </script>
 </body>
